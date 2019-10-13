@@ -950,7 +950,11 @@ class OleDirectoryEntry:
         """
         if self.modifyTime == 0:
             return None
-        return filetime2datetime(self.modifyTime)
+
+        try:
+            return filetime2datetime(self.modifyTime)
+        except:
+            return None
 
 
     def getctime(self):
@@ -964,7 +968,11 @@ class OleDirectoryEntry:
         """
         if self.createTime == 0:
             return None
-        return filetime2datetime(self.createTime)
+
+        try:
+            return filetime2datetime(self.createTime)
+        except:
+            return None
 
 
 #--- OleFileIO ----------------------------------------------------------------
@@ -1452,11 +1460,25 @@ class OleFileIO:
         convert a sector to an array of 32 bits unsigned integers,
         swapping bytes on big endian CPUs such as PowerPC (old Macs)
         """
-        a = array.array(UINT32, sect)
-        # if CPU is big endian, swap bytes:
-        if sys.byteorder == 'big':
-            a.byteswap()
-        return a
+
+        # if we fail, try making section divisible by 4.
+        # NOTE: we can't just do that upfront, it breaks parsing, for example on 6faa4322aef9d671a432119cf84a69932aaee87482eab155c035dcdf0c471752
+        try:
+            a = array.array(UINT32, sect)
+            # if CPU is big endian, swap bytes:
+            if sys.byteorder == 'big':
+                a.byteswap()
+            return a
+
+        except:
+            m = 4 - (len(sect) % 4)
+            sect += "\x00" * m
+
+            a = array.array(UINT32, sect)
+            # if CPU is big endian, swap bytes:
+            if sys.byteorder == 'big':
+                a.byteswap()
+            return a
 
 
     def loadfat_sect(self, sect):
